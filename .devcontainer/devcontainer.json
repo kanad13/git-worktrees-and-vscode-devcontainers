@@ -1,56 +1,39 @@
 {
-	// Display name shown in VS Code's "Dev Containers" status bar and container picker.
-	"name": "ubuntu",
+	// Use the standard Dev Container base image and keep the template focused on
+	// the Git worktree + Dev Container integration rather than app-specific tools.
+	"name": "worktree-ready-devcontainer",
+	"image": "mcr.microsoft.com/devcontainers/base:ubuntu",
 
-	// Points to the Dockerfile that builds the container image.
-	// "context": "." means Docker can access any file in .devcontainer during the build (e.g. to COPY files in).
-	"build": {
-		"dockerfile": "Dockerfile",
-		"context": "."
-	},
-
-	// The Linux user VS Code connects as inside the container.
-	// "vscode" is the default non-root user in Microsoft's base images.
-	// Avoid "root" — it causes file-permission conflicts on bind-mounts and is a security risk.
+	// The default non-root user in the base image. This avoids the usual bind-mount
+	// permission problems you get when opening source code as root.
 	"remoteUser": "vscode",
 
-	// ── WORKTREE SETUP ──────────────────────────────────────────────────────────
-	// This container is opened from a Git worktree. A worktree stores a .git FILE (not a folder) containing an absolute host path pointing back to the main 'working' repo. That path must resolve inside the container too — which is what the "mounts" block below achieves. Without it, every git command fails: "fatal: not a git repository (or any of the parent directories): .git"
-	// → Full explanation and background: see readme.md § "Git Worktree Support"
-	// ────────────────────────────────────────────────────────────────────────────
-
 	"mounts": [
-		// Mounts the main repo (named 'working') into the container at the same absolute path it has on the host.
-		// Why: a worktree's .git file stores an absolute host path. That path must exist inside the container too, or Git will refuse to operate. The worktree itself (this folder) is auto-mounted by VS Code as the workspace. "consistency=cached" is a legacy Docker/macOS performance hint; it is safe to leave on all platforms.
+		// Mount the parent directory at the same absolute path inside the container.
+		// This covers the common layout where the linked worktree and the main repo
+		// live side by side.
 		//
-		// TO ADAPT: Replace both occurrences of 'working' with your actual main repo folder name.
-		// TO REMOVE WORKTREE SUPPORT: Delete this entire "mounts" block.
-		"source=${localWorkspaceFolder}/../working,target=${localWorkspaceFolder}/../working,type=bind,consistency=cached",
+		// If your main repo is somewhere else, replace this with the smallest host
+		// directory that contains both the current worktree and the main repo.
+		"source=${localWorkspaceFolder}/..,target=${localWorkspaceFolder}/..,type=bind,consistency=cached"
 
-		// Mounts the local bare-repo remotes directory into the container at the same absolute path it has on the host.
-		// Why: the git remote 'origin' uses a local filesystem path (visible via `git remote -v`). That path must exist inside the container or fetch/push/pull fails with "does not appear to be a git repository". This is only relevant when remotes are local paths — GitHub, SSH (git@github.com:...), and HTTPS remotes connect over the network and are unaffected.
-		//
-		// TO ADAPT: Replace '/Users/kunal/Data/back/remotes' with the path to your own remotes directory.
-		// TO REMOVE: Delete this entry if all your remotes use SSH or HTTPS.
-		"source=/Users/kunal/Data/back/remotes,target=/Users/kunal/Data/back/remotes,type=bind,consistency=cached"
+		// If a Git remote is a local filesystem path outside that shared parent
+		// directory, add another mount like the example below.
+		// ,"source=/absolute/path/to/your/remotes,target=/absolute/path/to/your/remotes,type=bind,consistency=cached"
 	],
 
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"KunalPathak.lightweight-markdown-preview", // Markdown preview without a full browser render
-				"KunalPathak.mermaid-slideshow", // Render Mermaid diagrams as slides
-				"KunalPathak.safe-pdf-viewer", // Open PDFs inside VS Code
-				"esbenp.prettier-vscode" // Auto-format Markdown, JSON, HTML, etc.
+				// Add any extensions you want here. The container will automatically install them when it's created.
+				//See below a hand-picked extension for markdown preview, which is a common use case for worktrees.
+				"KunalPathak.lightweight-markdown-preview"
 			]
 		}
 	},
 
-	// Runs once after the container is created. Commands are chained with && on a single line because JSON strings cannot span multiple lines.
-	// safe.directory: Docker bind-mounts may appear owned by root inside the container even though the active user is 'vscode'. Git blocks operations in such directories unless they are explicitly marked safe. We register three directories: the worktree, the main repo, and the local remotes directory.
-	// Remove the third safe.directory if you deleted the local-remotes mount above.
-	// Remove the second and third safe.directory if you deleted the entire "mounts" block.
-	//
-	// --break-system-packages: Ubuntu 24+ prevents pip from installing into the system Python environment by default. This flag is the approved override when a virtual environment is not in use. It is intentional and not a mistake.
-	"postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && git config --global --add safe.directory ${containerWorkspaceFolder}/../working && git config --global --add safe.directory /Users/kunal/Data/back/remotes/Back-Working && cd .devcontainer && npm install && pip3 install --break-system-packages -r requirements.txt && chmod +x welcome.sh && ./welcome.sh"
+	// Run the setup script once after the container is created. It registers the
+	// current workspace, the detected main repo, and any visible local-path remotes
+	// as safe Git directories, then confirms that Git can read the repository.
+	"postCreateCommand": "bash .devcontainer/welcome.sh"
 }

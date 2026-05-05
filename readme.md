@@ -1,46 +1,54 @@
-## Git Worktrees + VS Code Dev Containers: The Ultimate AI Coding Workflow
+# Git Worktrees + VS Code Dev Containers
 
-## The Orchestrator: Git Worktrees + Dev Containers
+This repository is a small, purpose-built starter for one specific problem: making linked Git worktrees behave correctly inside a VS Code Dev Container so you can do parallel AI-assisted work without breaking your main setup.
 
-This repository demonstrates the "Multi-Agent" workflow for modern development. By combining Git Worktrees for code isolation and VS Code Dev Containers for environment isolation, we solve the primary friction point of AI-driven development: `Parallelism without Pollution`.
+## Why this exists
 
-## The Problem: The "One-at-a-Time" Bottleneck
+Git worktrees isolate files. Dev Containers isolate tools and runtime. Together, they are a clean way to let you work in one checkout while AI agents work in another.
 
-When you ask an AI agent to fix a bug or implement a feature, it takes over your development environment.
-Normally, your code lives in one folder. If you ask an AI agent to fix a bug, it takes over that folder. While the AI is working:
+The catch is that a linked worktree usually stores `.git` as a file that points back to metadata in the main repo. Inside a container, that host path often does not exist. The folder opens, but Git commands fail.
 
-- You can't code: If you try to write code at the same time, you'll clash with the AI.
-- Your tools are busy: The AI might be running tests or installing packages, making your computer slow or "freezing" your ability to run your own tests.
-- You’re stuck waiting: You have to sit and watch the AI finish before you can switch back to your own work.
+This repo keeps the solution narrow:
 
-## The Solution: "Parallel Sandboxing"
+- a minimal `.devcontainer` folder you can copy into another repo
+- a default mount strategy for the common side-by-side worktree layout
+- automatic Git `safe.directory` registration for the current workspace, the main repo, and visible local-path remotes
+- docs organized around the why, what, and how
 
-This repo shows you how to use Git Worktrees and Dev Containers to create separate "rooms" for your work:
+## What this repo is for
 
-1.  The Worktree gives the AI its own copy of the code in a new folder. You keep your main folder exactly how you like it.
-2.  The Dev Container gives the AI its own virtual computer. It can install things and run heavy tests in the background without slowing down your machine.
+Use this if you want:
 
-Result: You can keep building Feature A while three different AI agents are fixing bugs in the background. It turns your development process from a single-lane road into a multi-lane highway.
+- Git worktrees for parallel tasks
+- VS Code Dev Containers for isolated environments
+- AI agents working in those isolated environments
+- a setup that fixes the usual Git path issues caused by linked worktrees inside containers
 
-## What's Inside
+## Two ways to use it
 
-- `[Working devcontainer](./.devcontainer)` A production-ready Dev Container specification that auto-installs Git, Docker-in-Docker, and common AI CLI tools.
-- `[Explanation of concepts](./concepts.md)`: In-depth explainers on [Git Worktree architecture](https://git-scm.com/docs/git-worktree) and containerized workflows.
+### Clone the repo
 
-## Getting Started
+Use this repo as a reference and working example.
 
-### 1. Prerequisites
+### Copy only `.devcontainer/`
 
-Ensure you have [Docker Desktop](https://www.docker.com/products/docker-desktop/) and [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) installed.
+If you already have a repo, copy the `.devcontainer/` folder into it and adapt only the parts that depend on your folder layout or AI tooling.
 
-### 2. Clone the Repository
+## Quick start
 
-```bash
-git clone https://github.com/kanad13/git-worktrees-and-vscode-devcontainers.git
-```
+1. Make sure you have Docker, VS Code, the Dev Containers extension, and Git with worktree support.
+2. Clone this repo or copy its `.devcontainer/` folder into your own repo.
+3. Open a linked worktree in VS Code.
+4. Reopen the folder in the container.
+5. After the container is created, run:
+   - `git status`
+   - `git worktree list`
+   - `git remote -v`
 
-### 3. Open in VS Code
+If those commands work, the core setup is in good shape.
 
-Open the cloned folder in VS Code, then use the Command Palette to select **Dev Containers: Reopen in Container**. This will build the Dev Container and open your project inside it.
+## Repo map
 
-[More steps pending]
+- `.devcontainer/readme.md` explains how the template works and how to adapt it.
+- `.devcontainer/devcontainer.json` contains the minimal worktree-ready container configuration.
+- `concepts.md` explains the underlying model and why this setup works.
