@@ -2,6 +2,8 @@
 
 This folder exists for one reason: make linked Git worktrees work inside VS Code Dev Containers with as little extra configuration as possible.
 
+If you want the repo-level overview first, read [../readme.md](../readme.md). If you want the conceptual explanation of why this works, read [../concepts.md](../concepts.md). If you want the commands for creating your first worktrees, jump to [the setup section in the root README](../readme.md#create-your-first-worktrees).
+
 ## What is in this folder
 
 - `devcontainer.json`: the minimal container configuration, mount strategy, and VS Code customizations

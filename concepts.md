@@ -1,4 +1,6 @@
-# Why Git Worktrees and Dev Containers fit together
+# Why Git Worktrees and Dev Containers fit together for AI coding workflows
+
+If you are reading this repo for the first time, start with [readme.md](./readme.md) for the practical pitch and setup flow. If you already know why you care and only want to adapt the template, go to [`.devcontainer/readme.md`](./.devcontainer/readme.md).
 
 ## Why this pattern exists
 
