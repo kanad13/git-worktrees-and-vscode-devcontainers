@@ -33,17 +33,13 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"KunalPathak.lightweight-markdown-preview", // Markdown preview without a full browser render
-				"KunalPathak.mermaid-slideshow", // Render Mermaid diagrams as slides
-				"KunalPathak.safe-pdf-viewer", // Open PDFs inside VS Code
-				"esbenp.prettier-vscode" // Auto-format Markdown, JSON, HTML, etc.
+				// Add your project-specific extensions here
+				// Example: "esbenp.prettier-vscode" for code formatting
 			]
 		}
 	},
 
-	// Runs once after the container is created. Commands are chained with && on a single line because JSON strings cannot span multiple lines.
+	// Runs once after the container is created.
 	// safe.directory: Docker bind-mounts may appear owned by root inside the container even though the active user is 'vscode'. Git blocks operations in such directories unless they are explicitly marked safe. We mark the entire parent directory as safe, which covers both this worktree and the main repository.
-	//
-	// --break-system-packages: Ubuntu 24+ prevents pip from installing into the system Python environment by default. This flag is the approved override when a virtual environment is not in use. It is intentional and not a mistake.
-	"postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}/.. && cd .devcontainer && npm install && pip3 install --break-system-packages -r requirements.txt && chmod +x welcome.sh && ./welcome.sh"
+	"postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}/.."
 }

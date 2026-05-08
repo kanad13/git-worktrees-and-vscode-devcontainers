@@ -12,10 +12,15 @@ AI coding agents need to work on multiple branches simultaneously. Git only allo
 
 ## Quick Start
 
-1. **Clone this repository** (or copy `.devcontainer` into your existing project)
-2. **Open in VS Code** with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-3. **Create worktrees** as needed: `git worktree add ../feature-branch-name`
-4. **Open each worktree** in a new VS Code window — each gets its own container automatically
+- **Prerequisites:**
+  - Git
+  - VS Code with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+  - Docker
+- **Steps:**
+  - **Clone this repository** (or copy `.devcontainer` into your existing project)
+  - **Open in VS Code** with the Dev Containers extension
+  - **Create worktrees** as needed: `git worktree add ../feature-branch-name`
+  - **Open each worktree** in a new VS Code window — each gets its own container automatically
 
 No configuration needed. The template handles the complexity of mounting and path resolution automatically.
 
