@@ -1,30 +1,30 @@
 # Git Worktrees + VS Code Dev Containers
 
-With the rise of AI coding agents, many developers want to run multiple agents on the same codebase trying out different branches or tasks in parallel.
-Since Git allows you to only have one active branch checked out at a time, this can be tricky. How can you have multiple agents running on the same repository, if only one branch can be active?
-Git Worktrees are the answer. They let you have multiple checkouts of the same repository, each on a different branch, without interfering with each other. Each worktree is like a separate workspace that shares the same Git history but has its own HEAD and index.
+A zero-configuration template for running multiple AI agents in parallel, each working on a different branch in its own isolated environment.
 
-Here comes the second challenge: Each branch needs its own environment, e.g. one branch has a Python 3.10 setup with a certain set of dependencies, libraries, and tools, while another branch has a different setup. This is where VS Code Dev Containers come in. They allow you to create isolated development environments that can be customized for each worktree.
+## The Problem
 
-What that means in practice is:
+AI coding agents need to work on multiple branches simultaneously. Git only allows one active branch per repository checkout, and each branch may need its own environment setup. How do you run multiple agents in parallel without conflicts?
 
-- You have one git repository with multiple branches.
-- You create a worktree for each branch.
-- You plug each worktree into its own Dev Container.
-- You let each AI agent run in its own container, working on its own branch, without stepping on each other.
-- You can switch between worktrees and containers as needed, while keeping your main checkout clean and available for foreground work.
+## The Solution
 
-This repo is a template for that workflow. It solves the two main pain points that usually come up when trying to set this up:
+**Git Worktrees** let you check out multiple branches simultaneously in separate folders. **VS Code Dev Containers** provide isolated, reproducible environments for each branch. This template combines both, pre-configured to work together seamlessly.
 
-- VS Code Dev Containers and Git worktrees don't play well together out of the box, because the worktree's `.git` file points to a path that is not mounted inside the container. This repo includes a mount strategy and Git configuration to fix that.
-- without a template, setting up multiple worktrees and containers can be a manual and error-prone process. This repo provides copy-paste commands and a clear structure to make it easy to create and manage multiple worktrees and containers for your AI agents.
+## Quick Start
 
-You have 2 ways to use this repo:
+1. **Clone this repository** (or copy `.devcontainer` into your existing project)
+2. **Open in VS Code** with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+3. **Create worktrees** as needed: `git worktree add ../feature-branch-name`
+4. **Open each worktree** in a new VS Code window — each gets its own container automatically
 
-1. Copy the `.devcontainer` folder into your existing repository and follow the instructions to set up your worktrees and containers.
-2. Use this repo as a starting point for a new project, and customize it as needed.
+No configuration needed. The template handles the complexity of mounting and path resolution automatically.
 
-## Where to go next
+## Two Usage Patterns
 
-- [concepts.md](./concepts.md) explains the underlying concepts of Git worktrees and VS Code Dev Containers, and how they interact with each other.
-- [`.devcontainer/readme.md`](./.devcontainer/readme.md) provides step-by-step instructions on how to set up and use the worktree-ready Dev Container configuration in this repo.
+- **Copy `.devcontainer` into your project:** Drop the configuration into any existing repository to make it worktree-ready
+- **Use as a starting point:** Clone this repo and build your project on top of the pre-configured structure
+
+## Learn More
+
+- **[concepts.md](./concepts.md)** — Understand how Git worktrees and Dev Containers work together, and why this matters for AI agents
+- **[.devcontainer/readme.md](./.devcontainer/readme.md)** — Technical reference for customizing the configuration

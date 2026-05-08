@@ -38,49 +38,13 @@ If you don't need specific Python or Node packages for a project, do not delete 
 
 ## Git Worktree Support
 
-### What is a worktree?
+This Dev Container configuration is designed to work seamlessly with Git worktrees. For conceptual background on what worktrees are and why they're useful for AI agents, see [concepts.md](../concepts.md).
 
-A Git worktree lets you check out multiple branches simultaneously, each in its own folder, all sharing one set of `.git` metadata from a single "main" repository.
+### How Worktrees and Dev Containers Interact
 
-This is the typical structure when using worktrees:
+Worktrees and Dev Containers have a compatibility challenge: a worktree's `.git` file contains an absolute path pointing to the main repository's `.git` directory. When VS Code opens a worktree in a container, it only mounts the worktree folder by default—not the parent directory or main repository. This causes git commands to fail because the container can't access the path referenced in the `.git` file.
 
-```ascii
-parent-folder/
-  ├── my-repo/          ← main repository
-  │   ├── src/
-  │   ├── .git/         ← directory containing all metadata and history
-  │   └── ...
-  └── feature-branch/   ← worktree
-      ├── src/
-      ├── .git          ← FILE pointing to ../my-repo/.git
-      └── ...
-```
-
-Notice how the `.git` in `feature-branch` is not a directory but a **file** that contains a reference to the main repo's `.git` directory. This allows all branches to share the same history and metadata while being checked out in separate folders.
-
-This structure allows you to work on multiple branches simultaneously. Each AI agent can work in its own folder without interfering with others, even though they all share the same underlying git repository.
-
-## VSCode DevContainers
-
-### What is a Dev Container?
-
-DevContainers are a feature of Visual Studio Code that allows you to develop inside a Docker container. This means you can have a consistent development environment across different machines, with all the necessary tools and dependencies pre-installed in the container. When you open a folder in VS Code that contains a `.devcontainer` folder, VS Code will automatically build the container based on the configuration and open the folder inside that container. This is especially useful for projects that require specific versions of tools or libraries, as it ensures that everyone working on the project has the same environment.
-
-This makes Dev Containers a great fit for AI agents, as it allows you to create a self-contained environment with all the necessary tools and dependencies for the agent to function properly. You can also easily share this environment with others by sharing the `.devcontainer` folder and related configuration files.
-
-### The worktree compatibility challenge
-
-Worktrees and Dev Containers are both powerful tools for managing development environments, but they can have compatibility issues if not configured correctly. The main issue arises because worktrees rely on the `.git` file pointing to the main repository's `.git` directory, and if the container does not have access to that directory, git commands will fail.
-
-From the host machine, you might have a folder structure like this:
-
-```ascii
-parent-folder/
-  ├── my-repo/       ← main repository with .git/ directory
-  └── feature-task/  ← worktree you open in VS Code
-```
-
-When VS Code opens the worktree (`feature-task`) in a container, it mounts only that folder by default — **not** the parent directory or the main repo. Git reads the `.git` file in `feature-task`, finds an absolute host path pointing to `my-repo/.git`, tries to follow it, and fails because that path doesn't exist inside the container. Every git command then fails with:
+**Error you'd see without proper configuration:**
 
 ```
 fatal: not a git repository (or any of the parent directories): .git
@@ -95,7 +59,15 @@ This configuration mounts the **entire parent directory** into the container at 
 - This works automatically regardless of what you name your repository folder or worktrees
 - It supports GitHub, SSH, and HTTPS remotes out of the box
 
-The `postCreateCommand` marks the parent directory as `safe.directory` in git. This is required because Docker bind-mounts may appear owned by `root` inside the container, and git refuses to operate in directories owned by a different user than the current one.
+**Technical implementation:**
+
+```json
+"mounts": [
+  "source=${localWorkspaceFolder}/..,target=${localWorkspaceFolder}/..,type=bind,consistency=cached"
+]
+```
+
+The `postCreateCommand` marks the parent directory as `safe.directory` in git. This is required because Docker bind-mounts may appear owned by `root` inside the container, and git refuses to operate in directories owned by a different user.
 
 ### Adapting this config
 
