@@ -41,61 +41,46 @@ If you don't need specific Python or Node packages for a project, do not delete 
 ### What is a worktree?
 
 A Git worktree lets you check out multiple branches simultaneously, each in its own folder, all sharing one set of `.git` metadata from a single "main" repository.
-This is how a typical repo with several branches looks like:
+
+This is the typical structure when using worktrees:
 
 ```ascii
-repository_folder/
-  main_branch/
-    foo.py
-    .git/       ← contains all metadata and history for the entire repo
-  branch_1/
-    bar.py
-    .git        ← a FILE that points to the main repo's .git, not a full repo
-  branch_2/
-    baz.py
-    .git        ← a FILE that points to the main repo's .git, not a full repo
+parent-folder/
+  ├── my-repo/          ← main repository
+  │   ├── src/
+  │   ├── .git/         ← directory containing all metadata and history
+  │   └── ...
+  └── feature-branch/   ← worktree
+      ├── src/
+      ├── .git          ← FILE pointing to ../my-repo/.git
+      └── ...
 ```
 
-In this example, `main_branch_folder` is the main repo, and without the worktree feature, you would have to switch branches in-place, which can be disruptive. With worktrees, you can have `branch_1_folder` and `branch_2_folder` as separate folders that are checked out to different branches, but they all share the same `.git` metadata from `main_branch_folder`.
+Notice how the `.git` in `feature-branch` is not a directory but a **file** that contains a reference to the main repo's `.git` directory. This allows all branches to share the same history and metadata while being checked out in separate folders.
 
-```ascii
-repository_folder/
-  main_branch_folder/
-    foo.py
-    .git/       ← contains all metadata and history for the entire repo
-  branch_1_folder/
-    bar.py
-    .git        ← a FILE that points to the main repo's .git, not a full repo
-  branch_2_folder/
-    baz.py
-    .git        ← a FILE that points to the main repo's .git, not a full repo
-```
-
-Notice above how the `.git` in `branch_1_folder` and `branch_2_folder` is not a directory but a file that contains a reference to the main repo's `.git` directory. This allows all branches to share the same history and metadata while being checked out in separate folders.
-This also allows you to work on multiple branches at the same time since the AI agents treat each folder as a separate workspace, even though they all share the same underlying git repository.
+This structure allows you to work on multiple branches simultaneously. Each AI agent can work in its own folder without interfering with others, even though they all share the same underlying git repository.
 
 ## VSCode DevContainers
 
 ### What is a Dev Container?
 
-DevContainers are a feature of Visual Studio Code that allows you to develop inside a Docker container. This means you can have a consistent development environment across different machines, with all the necessary tools and dependencies pre-installed in the container. When you open a folder in VS Code that contains a `devcontainer.json` file, VS Code will automatically build the container based on the configuration and open the folder inside that container. This is especially useful for projects that require specific versions of tools or libraries, as it ensures that everyone working on the project has the same environment.
+DevContainers are a feature of Visual Studio Code that allows you to develop inside a Docker container. This means you can have a consistent development environment across different machines, with all the necessary tools and dependencies pre-installed in the container. When you open a folder in VS Code that contains a `.devcontainer` folder, VS Code will automatically build the container based on the configuration and open the folder inside that container. This is especially useful for projects that require specific versions of tools or libraries, as it ensures that everyone working on the project has the same environment.
 
-This makes Dev Containers a great fit for AI agents, as it allows you to create a self-contained environment with all the necessary tools and dependencies for the agent to function properly. You can also easily share this environment with others by sharing the `devcontainer.json` and related configuration files.
+This makes Dev Containers a great fit for AI agents, as it allows you to create a self-contained environment with all the necessary tools and dependencies for the agent to function properly. You can also easily share this environment with others by sharing the `.devcontainer` folder and related configuration files.
+
+### The worktree compatibility challenge
 
 Worktrees and Dev Containers are both powerful tools for managing development environments, but they can have compatibility issues if not configured correctly. The main issue arises because worktrees rely on the `.git` file pointing to the main repository's `.git` directory, and if the container does not have access to that directory, git commands will fail.
 
 From the host machine, you might have a folder structure like this:
 
 ```ascii
-repos/
-  working/       ← this is the worktree folder you open in VS Code
-  .git/          ← this is the main repo's .git directory that contains all the metadata and history
-  remotes/       ← this is a local filesystem remote that the repo fetches from and pushes to
+parent-folder/
+  ├── my-repo/       ← main repository with .git/ directory
+  └── feature-task/  ← worktree you open in VS Code
 ```
 
-As long as you open the `working` folder in VS Code, the `.git` file inside it will point to the `.git` directory at the absolute path `/Users/you/repos/.git`. If the container does not have that path mounted, git commands will fail because they cannot find the repository metadata.
-
-When VS Code opens a worktree in a container it mounts the worktree folder — but **not** the main repo. Git reads the `.git` file, finds the absolute host path `/Users/you/repos/working/...`, tries to follow it, and fails because that path doesn't exist inside the container. Every git command then fails with:
+When VS Code opens the worktree (`feature-task`) in a container, it mounts only that folder by default — **not** the parent directory or the main repo. Git reads the `.git` file in `feature-task`, finds an absolute host path pointing to `my-repo/.git`, tries to follow it, and fails because that path doesn't exist inside the container. Every git command then fails with:
 
 ```
 fatal: not a git repository (or any of the parent directories): .git
@@ -103,21 +88,23 @@ fatal: not a git repository (or any of the parent directories): .git
 
 ### How this repo's `devcontainer.json` solves the issue
 
-The `mounts` block in `devcontainer.json` bind-mounts the main repo into the container **at the exact same absolute path it has on the host** (side-by-side with the worktree). This makes the path inside the `.git` file valid, restoring full git functionality.
+This configuration mounts the **entire parent directory** into the container at the same absolute path it has on the host. This means:
 
-A second mount handles local filesystem remotes. When `git remote -v` shows a local path (e.g. `/Users/you/remotes/Back-Working`) rather than a GitHub URL, that path must also exist inside the container — otherwise `git fetch`, `push`, and `pull` fail with the same "does not appear to be a git repository" error. This does **not** apply to GitHub, SSH (`git@github.com:...`), or HTTPS remotes, which connect over the network and need no mounts.
+- Both the worktree (the folder you open in VS Code) and the main repository are accessible at their expected absolute paths
+- Git can follow the path in the `.git` file and find the repository metadata
+- This works automatically regardless of what you name your repository folder or worktrees
+- It supports GitHub, SSH, and HTTPS remotes out of the box
 
-The `postCreateCommand` marks all three mounted directories as `safe.directory` in git. This is required because Docker bind-mounts may appear owned by `root` inside the container, and git refuses to operate in directories owned by a different user than the current one.
+The `postCreateCommand` marks the parent directory as `safe.directory` in git. This is required because Docker bind-mounts may appear owned by `root` inside the container, and git refuses to operate in directories owned by a different user than the current one.
 
 ### Adapting this config
 
-| Scenario                              | What to change                                                                                                                                               |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Regular repo (no worktree)**        | Delete the `mounts` block entirely, and remove the second and third `safe.directory` lines from `postCreateCommand`                                          |
-| **Main repo has a different name**    | Replace both occurrences of `working` in the first mount entry, and in the second `safe.directory` command in `postCreateCommand`                            |
-| **Folders are not side-by-side**      | Update the `../working` relative paths in both places in the first mount entry to reflect the actual layout on disk                                          |
-| **Remote is a local filesystem path** | Add a mount for the remotes directory and a `safe.directory` for the bare repo — see the second mount entry and third `safe.directory` in the current config |
-| **Remote is on GitHub / SSH / HTTPS** | No additional mounts needed. Remove the second mount entry and the third `safe.directory` line from `postCreateCommand` if they are present                  |
+| Scenario                              | What to change                                                                                                                                                                                       |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Using GitHub/SSH/HTTPS remotes**    | No changes needed. This config works out of the box.                                                                                                                                                 |
+| **Worktrees not in parent directory** | If your worktrees are in a different location (not siblings), you'll need to adjust the mount path in `devcontainer.json` to point to the correct parent directory.                                  |
+| **Windows users**                     | The configuration works cross-platform, but ensure Docker Desktop and WSL2 (if applicable) are properly configured. The `${localWorkspaceFolder}` variable automatically converts paths for your OS. |
+| **Need additional mounts**            | Add more mount entries to the `mounts` array if you need to access other directories on your host machine.                                                                                           |
 
 ## The "All Good" Test
 
