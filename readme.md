@@ -4,11 +4,44 @@ A template for running multiple Git worktrees in parallel, each in its own VS Co
 
 The goal is simple: give every branch its own folder, its own container, and its own breathing room so humans and AI agents can work in parallel without trampling each other.
 
+This repository is a **workflow template**, not an application. You can either use it as a starting point for a new project, or copy the relevant pieces into an existing repository.
+
+## Start here
+
+If you just cloned this repository and want to know what to look at first:
+
+1. **Read this file** for the overview, recommended workflow, and quick start.
+2. **Use [`scripts/setup-worktrees.sh`](./scripts/setup-worktrees.sh)** if you want the guided path that creates the recommended directory layout for you.
+3. **Read [`.devcontainer/readme.md`](./.devcontainer/readme.md)** if you already know how you want to manage worktrees and mainly need the container mechanics and customization details.
+4. **Read [`concepts.md`](./concepts.md)** if you want the deeper background, trade-offs, and mental model.
+
+## Repository map
+
+- [`readme.md`](./readme.md) — start here; overview, quick start, and usage choices
+- [`scripts/setup-worktrees.sh`](./scripts/setup-worktrees.sh) — host-side helper that can move the main repository, create worktrees, and optionally open them in VS Code
+- [`.devcontainer/devcontainer.json`](./.devcontainer/devcontainer.json) — the actual Dev Container configuration that makes linked worktrees usable inside containers
+- [`.devcontainer/readme.md`](./.devcontainer/readme.md) — technical reference for the Dev Container assumptions, mount strategy, verification, and customization
+- [`concepts.md`](./concepts.md) — conceptual explainer for worktrees, Dev Containers, and why this combination is useful
+
 ## What this repository provides
 
 - A Dev Container configuration that keeps Git worktree metadata reachable inside the container
 - A host-side helper script that can create the recommended directory layout, move the main repository into it, and create worktrees for you
 - Documentation that explains both the mental model and the technical trade-offs
+
+## Choose how to use this repository
+
+### Use the guided path
+
+If you want the opinionated workflow this repo recommends, use [`scripts/setup-worktrees.sh`](./scripts/setup-worktrees.sh). It is the easiest way to land in the sibling layout that the Dev Container configuration expects.
+
+### Use the advanced path
+
+If you already understand Git worktrees and want to manage the layout yourself, you can use the [`.devcontainer`](./.devcontainer) folder directly and skip the helper script. In that mode, you are responsible for:
+
+- creating or maintaining the worktrees yourself
+- keeping the main repository and worktrees reachable at the paths referenced by the worktree `.git` files
+- updating the mount strategy and Git `safe.directory` settings together if you use a non-standard layout
 
 ## Supported workflow
 
@@ -59,7 +92,7 @@ The script can:
 - create a dedicated parent directory for the repo and its worktrees
 - move the main repository into that parent directory if needed
 - create one or more worktrees and branches in one pass
-- optionally open each new worktree in a separate VS Code window if the `code` CLI is available
+- optionally open each new worktree in a separate VS Code window if a VS Code CLI is available, preferring `code` when both `code` and `code-insiders` are installed
 
 ### 4. Open each worktree in VS Code
 

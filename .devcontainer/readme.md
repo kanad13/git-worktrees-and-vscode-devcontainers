@@ -2,6 +2,8 @@
 
 This folder contains the Dev Container configuration that makes linked Git worktrees usable inside VS Code containers.
 
+If you just cloned this repository and want the general overview first, start with [../readme.md](../readme.md). This file is the technical reference for people who want to understand or customize the Dev Container pieces.
+
 The short version: a worktree's `.git` file points back to Git admin data in the main repository, so the container has to be able to reach that path too.
 
 ## Supported layout
