@@ -1,45 +1,63 @@
 {
-	// Display name shown in VS Code's "Dev Containers" status bar and container picker.
-	"name": "ubuntu",
+	// Display name shown in VS Code's Dev Containers UI.
+	"name": "git-worktrees-devcontainer",
 
-	// Points to the Dockerfile that builds the container image.
-	// "context": "." means Docker can access any file in .devcontainer during the build (e.g. to COPY files in).
-	"build": {
-		"dockerfile": "Dockerfile",
-		"context": "."
-	},
+	// Keep the environment simple and reproducible by using the published base image directly.
+	// Pinning the Ubuntu version avoids surprising changes from a floating tag.
+	"image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
 
 	// The Linux user VS Code connects as inside the container.
-	// "vscode" is the default non-root user in Microsoft's base images.
-	// Avoid "root" — it causes file-permission conflicts on bind-mounts and is a security risk.
+	// Using the non-root 'vscode' user avoids common bind-mount permission issues.
 	"remoteUser": "vscode",
 
-	// ── WORKTREE SETUP ──────────────────────────────────────────────────────────
-	// This container is opened from a Git worktree. A worktree stores a .git FILE (not a folder) containing an absolute host path pointing back to the main repository. That path must resolve inside the container too — which is what the "mounts" block below achieves. Without it, every git command fails: "fatal: not a git repository (or any of the parent directories): .git"
-	// → Full explanation and background: see readme.md § "Git Worktree Support"
+	// ── WORKTREE LAYOUT ─────────────────────────────────────────────────────────
+	// This setup expects the main repository and all linked worktrees to live as
+	// siblings under one shared parent directory:
+	//   /parent/my-project
+	//   /parent/agent-1
+	//   /parent/agent-2
+	//
+	// Why this matters:
+	// A linked worktree stores a .git FILE whose contents point back to Git admin
+	// data under the main repository. Inside a container, that path must still be
+	// reachable or Git will fail with:
+	//   fatal: not a git repository (or any of the parent directories): .git
+	//
+	// The helper script in ../scripts/setup-worktrees.sh can create this layout and
+	// move the main repository into a dedicated parent directory for you.
 	// ────────────────────────────────────────────────────────────────────────────
 
 	"mounts": [
-		// Mounts the entire parent directory into the container at the same absolute path it has on the host.
-		// Why: a worktree's .git file stores an absolute host path to the main repository. By mounting the parent directory, we ensure that both the worktree (this folder) and the main repository are accessible at their expected paths.
-		// This approach works automatically regardless of what you name your repository folder or worktrees.
-		// "consistency=cached" is a legacy Docker/macOS performance hint; it is safe to leave on all platforms.
+		// Mount the shared parent directory into the container at the exact same
+		// absolute path it has on the host. That keeps the worktree's .git pointer
+		// valid inside the container.
 		//
-		// CROSS-PLATFORM NOTE: ${localWorkspaceFolder} works on Windows, macOS, and Linux. VS Code automatically converts paths appropriately for your OS.
-		// NO CUSTOMIZATION NEEDED: This configuration works out of the box for GitHub, SSH, and HTTPS remotes.
+		// SECURITY NOTE:
+		// The container can see every sibling under this parent directory. Prefer a
+		// dedicated parent containing only the main repository and its worktrees.
+		//
+		// PLATFORM NOTE:
+		// This repository officially targets macOS, Linux, and WSL-based Windows.
+		// Native Windows path models differ enough that they may require a custom
+		// mount strategy instead of mirroring ${localWorkspaceFolder} directly.
+		//
+		// 'consistency=cached' is primarily a legacy Docker Desktop hint for macOS.
+		// It is safe to leave in place on Linux and WSL.
 		"source=${localWorkspaceFolder}/..,target=${localWorkspaceFolder}/..,type=bind,consistency=cached"
 	],
 
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				// Add your project-specific extensions here
-				// Example: "esbenp.prettier-vscode" for code formatting
+				// Add project-specific extensions here when you turn this template into a real project.
 			]
 		}
 	},
 
 	// Runs once after the container is created.
-	// safe.directory: Docker bind-mounts may appear owned by root inside the container even though the active user is 'vscode'. Git blocks operations in such directories unless they are explicitly marked safe. We mark the entire parent directory as safe, which covers both this worktree and the main repository.
-	"postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}/.."
+	// Git's safe.directory is path-based, so we add a wildcard entry for the whole
+	// sibling set instead of a single directory. We register both the default
+	// /workspaces parent path and the mirrored host path parent to cover both ways
+	// a user may inspect the repository inside the container.
+	"postCreateCommand": "container_parent=\"$(dirname '${containerWorkspaceFolder}')\" && mirrored_parent=\"$(dirname '${localWorkspaceFolder}')\" && git config --global --add safe.directory \"${container_parent}/*\" && git config --global --add safe.directory \"${mirrored_parent}/*\""
 }

@@ -1,5 +1,16 @@
 # Concepts: Worktrees and Dev Containers for AI Agents
 
+This repository uses a **managed sibling layout** for the happy path:
+
+```text
+parent-directory/
+  my-project/      ← main repository
+  agent-1/         ← linked worktree
+  agent-2/         ← linked worktree
+```
+
+The helper script at [`scripts/setup-worktrees.sh`](./scripts/setup-worktrees.sh) can create this layout for you. That matters because the Dev Container configuration depends on the main repository and its worktrees sharing one parent directory.
+
 ## Git Worktrees: The "Multithreading" Feature for AI Agents
 
 Git worktrees are a built-in feature of Git that allows you to have multiple branches of the same repository checked out simultaneously in separate folders. This enables you to run multiple AI agents in parallel without them interfering with each other.
@@ -26,6 +37,18 @@ parent-folder/
 ```
 
 Notice that `.git` in the worktree is a **file** (not a directory) containing a reference to the main repository's `.git` directory. This allows all branches to share the same history while being checked out in separate folders.
+
+### Recommended Layout for This Repository
+
+The example above shows the key relationship this repository depends on: the main repository and every linked worktree should live under one shared parent directory.
+
+Why this repository leans into that pattern:
+
+- The Dev Container mounts that shared parent directory so the `.git` file inside each worktree can still resolve correctly inside the container
+- Git safe-directory configuration is applied to `parent/*`, which means sibling worktrees are trusted together
+- The trust boundary is easier to reason about when the parent directory contains only this repository and its worktrees
+
+You _can_ use a broader parent like `~/code`, but then the container can see and trust more sibling folders than most people expect. That is why the helper script defaults to creating a dedicated parent directory.
 
 ### Why the AI Hype?
 
@@ -98,16 +121,18 @@ Making Git worktrees work with Dev Containers is technically challenging:
 - The `.git` file references a path on the host machine that doesn't exist inside the container
 - Every git command fails: `fatal: not a git repository`
 
-### The Solution (Already Implemented)
+### The Solution
 
 This template solves the problem by **mounting the entire parent directory** into the container at the same absolute path it has on the host. This ensures:
 
 - Both the worktree and the main repository are accessible at their expected paths
 - Git can follow the path in the `.git` file and find the repository metadata
-- It works automatically regardless of what you name your folders
+- It works automatically when the main repository and its worktrees are siblings under one parent directory
 - It supports GitHub, SSH, and HTTPS remotes out of the box
-- **It works on Windows, macOS, and Linux** — VS Code's `${localWorkspaceFolder}` variable automatically converts paths for your OS
+- **It officially targets macOS, Linux, and WSL-based Windows** — native Windows path models may need a custom mount strategy
 
-You don't need to configure anything. Just clone the repository, open it in VS Code with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), and start creating worktrees.
+You don't need to hand-build the layout yourself. Just clone the repository, run the helper script on the host, let it place the main repository inside a dedicated parent directory, and then start creating worktrees.
+
+There is one important trade-off: because the container mounts the full shared parent directory, the container can also see sibling folders under that parent. That is why the recommended setup uses a dedicated parent directory rather than a general-purpose folder.
 
 For technical details about the mount strategy and customization options, see [`.devcontainer/readme.md`](./.devcontainer/readme.md).

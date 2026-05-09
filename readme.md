@@ -1,35 +1,120 @@
 # Git Worktrees + VS Code Dev Containers
 
-A zero-configuration template for running multiple AI agents in parallel, each working on a different branch in its own isolated environment.
+A template for running multiple Git worktrees in parallel, each in its own VS Code Dev Container.
 
-## The Problem
+The goal is simple: give every branch its own folder, its own container, and its own breathing room so humans and AI agents can work in parallel without trampling each other.
 
-AI coding agents need to work on multiple branches simultaneously. Git only allows one active branch per repository checkout, and each branch may need its own environment setup. How do you run multiple agents in parallel without conflicts?
+## What this repository provides
 
-## The Solution
+- A Dev Container configuration that keeps Git worktree metadata reachable inside the container
+- A host-side helper script that can create the recommended directory layout, move the main repository into it, and create worktrees for you
+- Documentation that explains both the mental model and the technical trade-offs
 
-**Git Worktrees** let you check out multiple branches simultaneously in separate folders. **VS Code Dev Containers** provide isolated, reproducible environments for each branch. This template combines both, pre-configured to work together seamlessly.
+## Supported workflow
 
-## Quick Start
+This repository officially targets:
 
-- **Prerequisites:**
-  - Git
-  - VS Code with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
-  - Docker
-- **Steps:**
-  - **Clone this repository** (or copy `.devcontainer` into your existing project)
-  - **Open in VS Code** with the Dev Containers extension
-  - **Create worktrees** as needed: `git worktree add ../feature-branch-name`
-  - **Open each worktree** in a new VS Code window — each gets its own container automatically
+- macOS
+- Linux
+- WSL-based Windows
 
-No configuration needed. The template handles the complexity of mounting and path resolution automatically.
+Native Windows path models are not the default target for this setup because the container mount strategy mirrors host paths directly. If you need native Windows support, plan on customizing the mount strategy.
 
-## Two Usage Patterns
+## Recommended layout
 
-- **Copy `.devcontainer` into your project:** Drop the configuration into any existing repository to make it worktree-ready
-- **Use as a starting point:** Clone this repo and build your project on top of the pre-configured structure
+This setup works best when the main repository and every worktree live as siblings under one shared parent directory:
 
-## Learn More
+```text
+my-project-worktrees/
+  my-project/      ← main repository
+  agent-1/         ← linked worktree
+  agent-2/         ← linked worktree
+```
 
-- **[concepts.md](./concepts.md)** — Understand how Git worktrees and Dev Containers work together, and why this matters for AI agents
-- **[.devcontainer/readme.md](./.devcontainer/readme.md)** — Technical reference for customizing the configuration
+That shared parent directory becomes the trust and mount boundary for the Dev Container configuration. Keep it dedicated to this repository and its worktrees whenever possible.
+
+## Quick start
+
+### 1. Prerequisites
+
+- Git
+- Docker
+- VS Code
+- The [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+### 2. Clone the repository
+
+Clone this repository normally.
+
+### 3. Run the helper script on the host
+
+From the repository root, run:
+
+```bash
+./scripts/setup-worktrees.sh
+```
+
+The script can:
+
+- create a dedicated parent directory for the repo and its worktrees
+- move the main repository into that parent directory if needed
+- create one or more worktrees and branches in one pass
+- optionally open each new worktree in a separate VS Code window if the `code` CLI is available
+
+### 4. Open each worktree in VS Code
+
+Open each worktree folder in its own VS Code window. VS Code should detect the `.devcontainer` folder and prompt you to reopen the folder in a container.
+
+## What the helper script standardizes
+
+The helper script is intentionally narrow. It does not install Docker, manage secrets, or guess your branching strategy. It focuses on one job: putting the repository into a directory layout that this Dev Container configuration can support reliably.
+
+You can inspect script usage any time with:
+
+```bash
+./scripts/setup-worktrees.sh --help
+```
+
+Example non-interactive usage:
+
+```bash
+./scripts/setup-worktrees.sh \
+  --managed-parent /Users/me/my-project-worktrees \
+  --base-branch main \
+  --branches agent-1,agent-2 \
+  --yes
+```
+
+## Manual setup for advanced users
+
+If you already have a parent directory layout you like, you can still create worktrees manually. The important part is that the main repository and the linked worktrees share the same parent directory.
+
+Example:
+
+```bash
+# main repository
+/projects/my-project-worktrees/my-project
+
+# inside the main repository
+git worktree add ../agent-1 -b agent-1 main
+git worktree add ../agent-2 -b agent-2 main
+```
+
+If you keep the main repository in a broad folder like `~/code` or `~/Data`, the Dev Container will mount and trust that broader parent. That still works, but it is less tidy and less isolated than using a dedicated parent directory.
+
+## Security and path-model notes
+
+- The container bind-mounts the full shared parent directory so Git can resolve linked worktree metadata.
+- Git safe-directory configuration is added for `parent/*`, not just one repo path, so sibling worktrees are trusted as well.
+- Because of that, the recommended parent directory should contain only the main repository and its worktrees.
+- Native Windows hosts may require a different mount strategy than the one included here.
+
+## Two usage patterns
+
+- **Use this repository as a template or starting point** for your own project
+- **Copy `.devcontainer` and `scripts/setup-worktrees.sh` into an existing repository** to give that repository the same workflow
+
+## Learn more
+
+- **[concepts.md](./concepts.md)** — Conceptual background for worktrees, containers, and why the combination helps
+- **[.devcontainer/readme.md](./.devcontainer/readme.md)** — Technical reference for the Dev Container configuration and its assumptions
