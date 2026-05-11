@@ -2,7 +2,7 @@
 
 This folder contains a VS Code Dev Container configuration for linked Git worktrees.
 
-For more context on why this is useful and how it works, see the main [readme.md](https://github.com/kanad13/git-worktrees-and-vscode-devcontainers/readme.md) and [concepts.md](https://github.com/kanad13/git-worktrees-and-vscode-devcontainers/concepts.md).
+For more context on why this is useful and how it works, see the main [readme.md](https://github.com/kanad13/git-worktrees-and-vscode-devcontainers/blob/main/readme.md) and [concepts.md](https://github.com/kanad13/git-worktrees-and-vscode-devcontainers/blob/main/concepts.md).
 
 Follow the setup instructions below to create linked worktrees and open them in containers without breaking Git commands.
 
@@ -142,7 +142,7 @@ That lets you confirm both parts of the fix:
 If you want this repository itself to run that verification automatically, use the smoke test script from the repository root:
 
 ```bash
-bash scripts/smoke-test.sh
+bash .devcontainer/smoke-test.sh
 ```
 
 The smoke test will:
@@ -158,7 +158,7 @@ The smoke test will:
 By default it cleans up the temporary directory and container after a successful run. If the smoke test fails, it keeps the temporary workspace so you can inspect what went wrong. If you want to keep the artifacts even after a successful run, use:
 
 ```bash
-KEEP_SMOKE_TEST_ARTIFACTS=1 bash scripts/smoke-test.sh
+KEEP_SMOKE_TEST_ARTIFACTS=1 bash .devcontainer/smoke-test.sh
 ```
 
 ## Example use cases
