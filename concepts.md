@@ -1,39 +1,5 @@
 # Need for "Git Worktree" + "Dev Container" Workflow
 
-Many developers now want to run **multiple AI coding agents in parallel**, each trying a different fix, refactor, or experiment on its own branch.
-
-That is exactly where **Git worktrees** shine. They let you check out multiple branches of the same repository at the same time in separate folders without cloning the repo over and over.
-
-But here is the part that matters even more in real-world AI workflows:
-
-- one branch might need **Python 3.10**
-- another branch might need **Python 3.12**
-- one experiment might upgrade a package
-- another might intentionally stay pinned to the old dependency set
-
-At that point, branch isolation is not enough. You also need **environment isolation**.
-
-That is why this repository combines **Git worktrees** with **VS Code Dev Containers** — and why it includes a specific fix for the annoying compatibility issue that appears when you try to use linked worktrees inside containers.
-
-If you want the deep dive, start with the main repo docs:
-
-- [Repository overview and quick start](./readme.md)
-- [Concepts and trade-offs](./concepts.md)
-- [Technical reference for the Dev Container setup](./.devcontainer/readme.md)
-
-## TL;DR
-
-This repository is a **template and reference implementation** for a workflow where:
-
-- multiple branches are active in parallel
-- each branch can have its own Dev Container and dependency choices
-- linked Git worktrees still function correctly inside VS Code containers
-- the `.devcontainer` folder can be copied into another repository that uses the same shared-parent layout
-
-If you are using AI agents to try different approaches in parallel, this is the “separate branches + separate environments + sane setup” pattern.
-
-## The modern problem: AI agents are parallel, but your dev environment usually is not
-
 A lot of teams are experimenting with AI coding agents for tasks like:
 
 - trying two or three possible bug fixes in parallel
@@ -58,6 +24,25 @@ If all of that happens in one local environment, you get exactly the kind of cha
 - broken shells and polluted caches
 - “works on my machine” nonsense
 - AI agents wasting time fixing setup instead of solving the actual task
+
+At that point, **branch isolation** is not enough. You also need **environment isolation**.
+
+This repository shows how to combine **Git worktrees** with **VS Code Dev Containers** to achieve exactly that: multiple branches, each in its own containerized environment, all without breaking Git commands. The special sauce is a fix for the compatibility issue that normally appears when you try to use linked worktrees inside containers. [This section or portion needs to be improved to make the message clearer about what special problem does the repo solve and how it solves it. The current wording is a bit vague and doesn't clearly state the problem or the solution. It should be more explicit about the issue with linked worktrees in containers and how the repository addresses that issue.]
+
+To make use of the repository, you can copy the `.devcontainer` folder into your own repository and follow the setup instructions in `.devcontainer/readme.md` to create worktrees and adapt it to your existing layout.
+
+Alternatively, you can continue reading for a deeper dive into the concepts, trade-offs, and example use cases for this workflow in [concepts.md](./concepts.md).
+
+## TL;DR
+
+This repository is a **template and reference implementation** for a workflow where:
+
+- multiple branches are active in parallel
+- each branch can have its own Dev Container and dependency choices
+- linked Git worktrees still function correctly inside VS Code containers
+- the `.devcontainer` folder can be copied into another repository that uses the same shared-parent layout
+
+If you are using AI agents to try different approaches in parallel, this is the “separate branches + separate environments + sane setup” pattern.
 
 ## Why Git worktrees are the right foundation
 
@@ -115,34 +100,3 @@ So if you open a linked worktree in a container, the path referenced by `.git` m
 ```text
 fatal: not a git repository
 ```
-
-This is the exact problem the repository solves.
-
-## What this repository gives you
-
-This repo packages the workflow into something reusable.
-
-### 1. A reusable Dev Container fix for linked worktrees
-
-The `.devcontainer` configuration bind-mounts the **shared parent directory** into the container at the same path it has on the host.
-
-That keeps the linked worktree's `.git` pointer valid inside the container, so Git can still find the metadata it needs.
-
-If you want the implementation details, see the [Dev Container technical reference](./.devcontainer/readme.md).
-
-### 2. A practical setup you can reuse in your own repository
-
-The main reusable part is the [`.devcontainer`](./.devcontainer) folder.
-
-If your repository uses the same shared-parent layout for the main checkout and linked worktrees, you can copy that folder into your own repository and create worktrees with normal Git commands.
-
-That keeps the adoption path simple and makes the core idea easier to understand.
-
-### 3. A documented mental model you can copy into your own repo
-
-This is not just a config dump. The repository also explains:
-
-- why the shared-parent layout matters
-- why Git `safe.directory` has to be handled carefully
-- what trade-offs the approach makes
-- when you should or should not use it

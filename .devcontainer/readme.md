@@ -1,11 +1,12 @@
 # Dev Container configuration for Git worktrees
 
 This folder contains a VS Code Dev Container configuration for linked Git worktrees.
+
 For more context on why this is useful and how it works, see the main [readme.md](https://github.com/kanad13/git-worktrees-and-vscode-devcontainers/readme.md) and [concepts.md](https://github.com/kanad13/git-worktrees-and-vscode-devcontainers/concepts.md).
 
-You can copy this `.devcontainer/` folder into your own repository and follow the setup below so that you can run multiple Git worktrees inside VS Code Dev Containers without breaking Git commands.
+Follow the setup instructions below to create linked worktrees and open them in containers without breaking Git commands.
 
-## Quick start
+## Setup instructions
 
 ### 1. Install the prerequisites
 
@@ -52,7 +53,6 @@ my-project-worktrees/
     .devcontainer/
 ```
 
-
 Because each linked worktree is its own checkout of the repository, each worktree will also contain the same `.devcontainer/` folder.
 
 ### 4. Create linked worktrees with plain Git
@@ -97,7 +97,17 @@ Each worktree can then run in its own containerized environment.
 
 ## Verifying the setup
 
-After VS Code reopens a linked worktree in a container, run:
+You have 3 ways to verify that the setup is working:
+
+1. Inside the VS Code UI
+2. With the Dev Container CLI
+3. With the repository's smoke test script
+
+### Option 1: Verify inside the VS Code UI
+
+Open VS Code and open one of the worktree folders, for example `branch-1/`.
+
+When you open the terminal in VS Code, you should be inside the container environment. Run:
 
 ```bash
 git status
@@ -111,9 +121,9 @@ You want to see all of the following:
 - `git log` works normally
 - `.git` contains a pointer back to Git admin data owned by the main repository
 
-### Optional: verify with the Dev Container CLI
+### Option 2: Verify with the Dev Container CLI
 
-If you want to verify the setup outside the VS Code UI, you can do the same check with the Dev Container CLI:
+Instead of verifying inside the VS Code UI, you can do the same check with the Dev Container CLI:
 
 ```bash
 devcontainer up --workspace-folder /path/to/branch-1
@@ -127,15 +137,29 @@ That lets you confirm both parts of the fix:
 - the linked worktree's `.git` pointer still resolves inside the container
 - `safe.directory` trusts the sibling set under the shared parent
 
-## Platform scope
+### Option 3: Verify with the repository's smoke test script
 
-This repository officially supports:
+If you want this repository itself to run that verification automatically, use the smoke test script from the repository root:
 
-- macOS
-- Linux
-- Windows via WSL
+```bash
+bash scripts/smoke-test.sh
+```
 
-Native Windows hosts are not the default target because mirrored path strategies differ enough that you may need a custom mount solution.
+The smoke test will:
+
+- create a temporary Git repository
+- copy in this repo's `.devcontainer/` folder
+- create a linked worktree
+- start the linked worktree in a Dev Container
+- verify that Git works inside the container
+- verify that `.git` still points to the shared Git metadata
+- verify that `safe.directory` was configured for both `/workspaces/*` and the mirrored host parent path
+
+By default it cleans up the temporary directory and container after a successful run. If the smoke test fails, it keeps the temporary workspace so you can inspect what went wrong. If you want to keep the artifacts even after a successful run, use:
+
+```bash
+KEEP_SMOKE_TEST_ARTIFACTS=1 bash scripts/smoke-test.sh
+```
 
 ## Example use cases
 
