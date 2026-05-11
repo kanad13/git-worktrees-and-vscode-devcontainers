@@ -4,6 +4,10 @@
 
 	// Keep the environment simple and reproducible by using the published base image directly.
 	// Pinning the Ubuntu version avoids surprising changes from a floating tag.
+	// To customize the toolchain per branch, edit this "image" value inside that
+	// branch's copy of devcontainer.json, or switch to a Dockerfile / Compose-based
+	// setup. Creating an arbitrary .devcontainer/image file does nothing unless
+	// your configuration explicitly reads it.
 	"image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
 
 	// The Linux user VS Code connects as inside the container.

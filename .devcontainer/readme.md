@@ -111,6 +111,22 @@ You want to see all of the following:
 - `git log` works normally
 - `.git` contains a pointer back to Git admin data owned by the main repository
 
+### Optional: verify with the Dev Container CLI
+
+If you want to verify the setup outside the VS Code UI, you can do the same check with the Dev Container CLI:
+
+```bash
+devcontainer up --workspace-folder /path/to/branch-1
+devcontainer exec --workspace-folder /path/to/branch-1 git status
+devcontainer exec --workspace-folder /path/to/branch-1 git log --oneline -5
+devcontainer exec --workspace-folder /path/to/branch-1 sh -lc 'cat .git && printf "\n---\n" && git config --global --get-all safe.directory'
+```
+
+That lets you confirm both parts of the fix:
+
+- the linked worktree's `.git` pointer still resolves inside the container
+- `safe.directory` trusts the sibling set under the shared parent
+
 ## Platform scope
 
 This repository officially supports:
@@ -125,20 +141,27 @@ Native Windows hosts are not the default target because mirrored path strategies
 
 ### Different Python versions
 
-Create worktrees for testing Python version compatibility:
+Create worktrees for testing Python version compatibility.
+
+The important detail is that this template reads the `image` field directly from `.devcontainer/devcontainer.json`. If you want different branches to use different base images, edit that field in each branch's copy of `devcontainer.json`.
 
 ```bash
-# Main repo uses Python 3.12
+# Create a test branch worktree
 cd my-project-worktrees/my-project
-echo "mcr.microsoft.com/devcontainers/python:3.12" > .devcontainer/image
-
-# Test branch uses Python 3.10
 git worktree add ../python-3.10-test -b python-3.10-test
-cd ../python-3.10-test
-echo "mcr.microsoft.com/devcontainers/python:3.10" > .devcontainer/image
 ```
 
-Each worktree can customize its `devcontainer.json` independently.
+Then update `.devcontainer/devcontainer.json` in each worktree, for example:
+
+```json
+// my-project/.devcontainer/devcontainer.json
+"image": "mcr.microsoft.com/devcontainers/python:3.12"
+
+// python-3.10-test/.devcontainer/devcontainer.json
+"image": "mcr.microsoft.com/devcontainers/python:3.10"
+```
+
+Each worktree can customize its own `devcontainer.json` independently.
 
 ### Different dependencies
 
