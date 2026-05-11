@@ -1,12 +1,9 @@
 # Dev Container configuration for Git worktrees
 
-This folder contains a VS Code Dev Container configuration for [linked Git worktrees](https://github.com/kanad13/git-worktrees-and-vscode-devcontainers).
+This folder contains a VS Code Dev Container configuration for linked Git worktrees.
+For more context on why this is useful and how it works, see the main [readme.md](https://github.com/kanad13/git-worktrees-and-vscode-devcontainers/readme.md) and [concepts.md](https://github.com/kanad13/git-worktrees-and-vscode-devcontainers/concepts.md).
 
-You can copy this `.devcontainer/` folder into your own repository and follow the setup below.
-
-## Preread
-
-- Read [`../concepts.md`](https://github.com/kanad13/git-worktrees-and-vscode-devcontainers/concepts.md) if you want the background on why combining Git worktrees and VS Code Dev Containers is powerful for AI-assisted workflows, and what the hidden compatibility issue is that this repository solves.
+You can copy this `.devcontainer/` folder into your own repository and follow the setup below so that you can run multiple Git worktrees inside VS Code Dev Containers without breaking Git commands.
 
 ## Quick start
 
@@ -45,7 +42,7 @@ That dedicated parent becomes both:
 
 ### 3. Copy this `.devcontainer/` folder into your repository root
 
-Clone [this repository](https://github.com/kanad13/git-worktrees-and-vscode-devcontainers) and copy from it the `.devcontainer/` folder into the root of your main repository, which is now `my-project/` in the example layout.
+Copy the `.devcontainer/` folder from this repository into the root of your main repository, which is now `my-project/` in the example layout.
 
 After copying it, your layout should look like this:
 
@@ -55,23 +52,14 @@ my-project-worktrees/
     .devcontainer/
 ```
 
+
 Because each linked worktree is its own checkout of the repository, each worktree will also contain the same `.devcontainer/` folder.
 
-### 4. Create branches in your repository
+### 4. Create linked worktrees with plain Git
 
-If you don't have any branches yet, create the ones you want to work on in parallel.
-These are the branches that your AI code agents will work on at the same time.
+Now create linked worktrees using plain Git commands. The worktree command can create new branches and check them out simultaneously.
 
-```bash
-git checkout -b branch-1
-git checkout -b branch-2
-```
-
-### 5. Create linked worktrees with plain Git
-
-Now create linked worktrees for each branch using plain Git commands.
-
-For new branches:
+**For new branches** (creates the branch and worktree in one step):
 
 ```bash
 cd my-project-worktrees/my-project/
@@ -79,7 +67,7 @@ git worktree add ../branch-1 -b branch-1 main
 git worktree add ../branch-2 -b branch-2 main
 ```
 
-If a branch already exists locally, omit `-b`:
+**If a branch already exists locally**, omit the `-b` flag:
 
 ```bash
 git worktree add ../branch-1 branch-1
@@ -95,7 +83,7 @@ my-project-worktrees/
   branch-2/
 ```
 
-### 6. Open each worktree in VS Code
+### 5. Open each worktree in VS Code
 
 Open each folder separately in different VS Code windows:
 
@@ -132,3 +120,38 @@ This repository officially supports:
 - Windows via WSL
 
 Native Windows hosts are not the default target because mirrored path strategies differ enough that you may need a custom mount solution.
+
+## Example use cases
+
+### Different Python versions
+
+Create worktrees for testing Python version compatibility:
+
+```bash
+# Main repo uses Python 3.12
+cd my-project-worktrees/my-project
+echo "mcr.microsoft.com/devcontainers/python:3.12" > .devcontainer/image
+
+# Test branch uses Python 3.10
+git worktree add ../python-3.10-test -b python-3.10-test
+cd ../python-3.10-test
+echo "mcr.microsoft.com/devcontainers/python:3.10" > .devcontainer/image
+```
+
+Each worktree can customize its `devcontainer.json` independently.
+
+### Different dependencies
+
+Test dependency upgrades in isolated branches:
+
+```bash
+# Branch A: stable dependencies
+git worktree add ../stable-deps -b stable-deps
+
+# Branch B: upgraded dependencies
+git worktree add ../upgrade-test -b upgrade-test
+cd ../upgrade-test
+# Modify requirements.txt or package.json for testing
+```
+
+Each container will have its own isolated environment, preventing conflicts.

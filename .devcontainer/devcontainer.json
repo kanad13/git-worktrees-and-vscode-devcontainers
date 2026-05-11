@@ -31,9 +31,12 @@
 		// absolute path it has on the host. That keeps the worktree's .git pointer
 		// valid inside the container.
 		//
-		// SECURITY NOTE:
-		// The container can see every sibling under this parent directory. Prefer a
-		// dedicated parent containing only the main repository and its worktrees.
+		// SECURITY WARNING:
+		// The container can see EVERY sibling folder under this parent directory,
+		// not just the current worktree. This means all worktrees and the main
+		// repository are visible. Prefer a dedicated parent containing ONLY the
+		// main repository and its worktrees. Do NOT use a parent that contains
+		// unrelated projects, sensitive data, or private repositories.
 		//
 		// PLATFORM NOTE:
 		// This repository officially targets macOS, Linux, and WSL-based Windows.
