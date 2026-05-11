@@ -28,7 +28,7 @@ This repository is a **template and reference implementation** for a workflow wh
 - multiple branches are active in parallel
 - each branch can have its own Dev Container and dependency choices
 - linked Git worktrees still function correctly inside VS Code containers
-- a helper script can set up the recommended shared-parent layout and create worktrees for you
+- the `.devcontainer` folder can be copied into another repository that uses the same shared-parent layout
 
 If you are using AI agents to try different approaches in parallel, this is the “separate branches + separate environments + sane setup” pattern.
 
@@ -130,16 +130,13 @@ That keeps the linked worktree's `.git` pointer valid inside the container, so G
 
 If you want the implementation details, see the [Dev Container technical reference](./.devcontainer/readme.md).
 
-### 2. A host-side setup script for the recommended layout
+### 2. A practical setup you can reuse in your own repository
 
-The repository includes [`.devcontainer/setup-worktrees.sh`](./.devcontainer/setup-worktrees.sh), which can:
+The main reusable part is the [`.devcontainer`](./.devcontainer) folder.
 
-- choose or create the shared parent directory
-- move the main repository into that layout if needed
-- create multiple branches and linked worktrees in one pass
-- optionally open each worktree in VS Code
+If your repository uses the same shared-parent layout for the main checkout and linked worktrees, you can copy that folder into your own repository and create worktrees with normal Git commands.
 
-That makes the “happy path” much easier to adopt.
+That keeps the adoption path simple and makes the core idea easier to understand.
 
 ### 3. A documented mental model you can copy into your own repo
 

@@ -23,8 +23,7 @@
 	// reachable or Git will fail with:
 	//   fatal: not a git repository (or any of the parent directories): .git
 	//
-	// The helper script in ../.devcontainer/setup-worktrees.sh can create this layout and
-	// move the main repository into a dedicated parent directory for you.
+	// See .devcontainer/readme.md for the recommended layout and setup steps.
 	// ────────────────────────────────────────────────────────────────────────────
 
 	"mounts": [
