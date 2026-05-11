@@ -1,138 +1,151 @@
-# Concepts: Worktrees and Dev Containers for AI Agents
+# Need for "Git Worktree" + "Dev Container" Workflow
 
-This repository uses a **managed sibling layout** for the happy path:
+Many developers now want to run **multiple AI coding agents in parallel**, each trying a different fix, refactor, or experiment on its own branch.
+
+That is exactly where **Git worktrees** shine. They let you check out multiple branches of the same repository at the same time in separate folders without cloning the repo over and over.
+
+But here is the part that matters even more in real-world AI workflows:
+
+- one branch might need **Python 3.10**
+- another branch might need **Python 3.12**
+- one experiment might upgrade a package
+- another might intentionally stay pinned to the old dependency set
+
+At that point, branch isolation is not enough. You also need **environment isolation**.
+
+That is why this repository combines **Git worktrees** with **VS Code Dev Containers** — and why it includes a specific fix for the annoying compatibility issue that appears when you try to use linked worktrees inside containers.
+
+If you want the deep dive, start with the main repo docs:
+
+- [Repository overview and quick start](./readme.md)
+- [Concepts and trade-offs](./concepts.md)
+- [Technical reference for the Dev Container setup](./.devcontainer/readme.md)
+
+## TL;DR
+
+This repository is a **template and reference implementation** for a workflow where:
+
+- multiple branches are active in parallel
+- each branch can have its own Dev Container and dependency choices
+- linked Git worktrees still function correctly inside VS Code containers
+- a helper script can set up the recommended shared-parent layout and create worktrees for you
+
+If you are using AI agents to try different approaches in parallel, this is the “separate branches + separate environments + sane setup” pattern.
+
+## The modern problem: AI agents are parallel, but your dev environment usually is not
+
+A lot of teams are experimenting with AI coding agents for tasks like:
+
+- trying two or three possible bug fixes in parallel
+- testing a safe refactor versus a bolder rewrite
+- comparing dependency upgrades on separate branches
+- splitting several small tickets across multiple agents
+
+The obvious first step is to give each agent its own branch. That prevents code edits from colliding.
+
+But once those branches need different environments, things get messy fast.
+
+For example:
+
+- Agent A is testing a fix on **Python 3.10**
+- Agent B is testing the same fix on **Python 3.12**
+- Agent C is trying a dependency upgrade that changes package resolution
+
+If all of that happens in one local environment, you get exactly the kind of chaos you would expect:
+
+- runtime conflicts
+- package version conflicts
+- broken shells and polluted caches
+- “works on my machine” nonsense
+- AI agents wasting time fixing setup instead of solving the actual task
+
+## Why Git worktrees are the right foundation
+
+Git worktrees let you have multiple branches of the same repository checked out simultaneously in separate folders.
+
+That means you can have:
+
+- `bugfix-a/`
+- `experiment-b/`
+- `dependency-upgrade/`
+
+all active at the same time, all backed by the same repository history, without cloning the repo three times.
+
+That makes worktrees a great fit for:
+
+- AI agent workflows
+- parallel human development
+- testing multiple ideas side by side
+- keeping task boundaries explicit
+
+Compared with multiple full clones, worktrees are lighter, cleaner, and easier to manage.
+
+## Why worktrees alone are not enough
+
+Worktrees isolate the **code checkout**. They do not isolate the **runtime environment**.
+
+That distinction matters.
+
+If one branch needs a different Python version, different Node version, or different dependency tree, separate folders are not enough. You also need separate environments.
+
+That is where **VS Code Dev Containers** become powerful.
+
+Each worktree can be opened in its own container, which means each branch can carry its own:
+
+- language version
+- package set
+- tooling stack
+- editor extensions
+- process sandbox
+
+This is the real selling point for modern AI-assisted workflows:
+
+> Git worktrees give each agent its own branch and folder. Dev Containers give each branch its own environment.
+
+## The catch: linked worktrees often break inside Dev Containers
+
+There is a hidden compatibility issue here.
+
+In a linked worktree, `.git` is usually not a full directory. It is a small file that points back to Git admin data owned by the main repository.
+
+VS Code, however, normally mounts only the folder you open into the container.
+
+So if you open a linked worktree in a container, the path referenced by `.git` may no longer exist inside that container. That is how you get errors like:
 
 ```text
-parent-directory/
-  my-project/      ← main repository
-  agent-1/         ← linked worktree
-  agent-2/         ← linked worktree
+fatal: not a git repository
 ```
 
-The helper script at [`scripts/setup-worktrees.sh`](./scripts/setup-worktrees.sh) can create this layout for you. That matters because the Dev Container configuration depends on the main repository and its worktrees sharing one parent directory.
+This is the exact problem the repository solves.
 
-## Git Worktrees: The "Multithreading" Feature for AI Agents
+## What this repository gives you
 
-Git worktrees are a built-in feature of Git that allows you to have multiple branches of the same repository checked out simultaneously in separate folders. This enables you to run multiple AI agents in parallel without them interfering with each other.
+This repo packages the workflow into something reusable.
 
-### What is a Git Worktree?
+### 1. A reusable Dev Container fix for linked worktrees
 
-Normally, a single repository has one "working tree" (your project folder). To switch tasks, you have to `git stash` or commit your work and then `git checkout` a new branch. A worktree lets you "multithread" your repo:
+The `.devcontainer` configuration bind-mounts the **shared parent directory** into the container at the same path it has on the host.
 
-- **Shared History:** All worktrees share the same `.git` folder and commit history.
-- **Isolated Folders:** Each worktree lives in its own directory on your machine.
-- **Multiple Active Branches:** You can have `feature-A` open in one folder and `bugfix-B` in another at the exact same time.
+That keeps the linked worktree's `.git` pointer valid inside the container, so Git can still find the metadata it needs.
 
-Here's how the folder structure looks:
+If you want the implementation details, see the [Dev Container technical reference](./.devcontainer/readme.md).
 
-```ascii
-parent-folder/
-  ├── my-project/      ← main repository
-  │   ├── src/
-  │   ├── .git/        ← directory with all git metadata and history
-  │   └── .devcontainer/
-  └── feature-fix/     ← worktree
-      ├── src/
-      └── .git         ← FILE (not directory) pointing to ../my-project/.git
-```
+### 2. A host-side setup script for the recommended layout
 
-Notice that `.git` in the worktree is a **file** (not a directory) containing a reference to the main repository's `.git` directory. This allows all branches to share the same history while being checked out in separate folders.
+The repository includes [`.devcontainer/setup-worktrees.sh`](./.devcontainer/setup-worktrees.sh), which can:
 
-### Recommended Layout for This Repository
+- choose or create the shared parent directory
+- move the main repository into that layout if needed
+- create multiple branches and linked worktrees in one pass
+- optionally open each worktree in VS Code
 
-The example above shows the key relationship this repository depends on: the main repository and every linked worktree should live under one shared parent directory.
+That makes the “happy path” much easier to adopt.
 
-Why this repository leans into that pattern:
+### 3. A documented mental model you can copy into your own repo
 
-- The Dev Container mounts that shared parent directory so the `.git` file inside each worktree can still resolve correctly inside the container
-- Git safe-directory configuration is applied to `parent/*`, which means sibling worktrees are trusted together
-- The trust boundary is easier to reason about when the parent directory contains only this repository and its worktrees
+This is not just a config dump. The repository also explains:
 
-You _can_ use a broader parent like `~/code`, but then the container can see and trust more sibling folders than most people expect. That is why the helper script defaults to creating a dedicated parent directory.
-
-### Why the AI Hype?
-
-- The rise of "Agentic AI" (tools like [Claude Code](https://code.claude.com/docs/en/common-workflows#run-parallel-sessions-with-worktrees), or [OpenAI's Codex](https://developers.openai.com/codex/app/worktrees)) has made worktrees a necessity for three main reasons:
-  - `1. True Parallelism:` AI agents often take minutes to reason and write code. If you run an agent in your main directory, you are "locked out" until it finishes. With worktrees, you can spin up 3–5 agents in separate folders, each working on a different ticket simultaneously.
-  - `2. Conflict Prevention:` If two agents work in the same folder, they might overwrite each other's changes mid-edit or pollute each other's context. Worktrees provide a "sandbox" for each agent to safely "break things" in isolation.
-  - `3. Efficiency over Clones:` You could just clone the repo 5 times, but that wastes massive disk space and requires you to git fetch in every single copy. Worktrees are lightweight and stay perfectly synced with your main repo.
-
-## VS Code Dev Containers
-
-VS Code Dev Containers take the idea of a "sandbox" even further than Git worktrees. While a worktree isolates your code, a Dev Container isolates your entire development environment—including the OS, compilers, tools, and extensions—using Docker.
-
-### What is a Dev Container?
-
-Think of it as **"Environment as Code."** Instead of asking a teammate to "install Node 18, Python 3.10, and the ESLint extension," you commit a `.devcontainer` folder to your repo. When you open that folder in [Visual Studio Code](https://code.visualstudio.com/docs/devcontainers/containers), it:
-
-- Spins up a Docker container with the exact versions of everything you need
-- Mounts your project files into that container
-- Automatically installs the VS Code extensions required for that project
-
-### Why are Dev Containers useful?
-
-- **Zero Onboarding:** New developers (or agents) can start coding in seconds without installing anything locally besides [Docker](https://www.docker.com/products/docker-desktop/) and [VS Code](https://code.visualstudio.com/download)
-- **"Works on My Machine" is Dead:** Since everyone uses the same container image, you eliminate bugs caused by different OS versions or missing libraries
-- **Clean Host Machine:** You don't have to clutter your personal laptop with 20 different versions of Java or Ruby; everything stays inside the container
-
-## The "Golden Combo": Worktrees + Dev Containers for AI
-
-When you combine [Git worktrees](https://git-scm.com/docs/git-worktree) with [Dev Containers](https://containers.dev/), you unlock a professional Agentic Development workflow that solves the "Messy Agent" problem:
-
-### 1. Total Isolation (Code + Runtime)
-
-**The Problem:**
-
-- A worktree gives an AI agent its own folder so it won't overwrite your files.
-- But if that agent runs a test that clears a database or starts a web server on port 3000, it might still crash your local environment.
-
-**The Fix:**
-
-- If each worktree also has its own Dev Container, the agent gets a private virtual machine.
-- It can delete databases, install weird packages, and crash its own server without ever touching your host machine or your other active tasks.
-
-### 2. Parallel Problem Solving
-
-- You can act as a "conductor" for an army of agents:
-  - Worktree A + Container 1: Agent A is refactoring the backend in a Node 20 environment.
-  - Worktree B + Container 2: Agent B is fixing a UI bug in a React environment.
-  - Your Main Folder: You are writing a new feature on your local machine.
-- All three run at the same time, sharing history but nothing else.
-
-### 3. Deterministic Results
-
-**The Problem:**
-
-- AI agents are notoriously sensitive to their environment.
-- If an agent tries to run code and fails because a library is missing, it might waste $5 of API credits trying to "fix" the environment instead of the code.
-
-**The Fix:**
-
-- Dev Containers ensure the agent always starts in a perfectly configured state, making its actions much more predictable and cost-effective.
-
-## The Technical Challenge (And How This Template Solves It)
-
-### The Problem
-
-Making Git worktrees work with Dev Containers is technically challenging:
-
-- A worktree's `.git` file contains an **absolute path** pointing to the main repository's `.git` directory
-- When VS Code opens a worktree in a container, it only mounts that worktree folder by default
-- The `.git` file references a path on the host machine that doesn't exist inside the container
-- Every git command fails: `fatal: not a git repository`
-
-### The Solution
-
-This template solves the problem by **mounting the entire parent directory** into the container at the same absolute path it has on the host. This ensures:
-
-- Both the worktree and the main repository are accessible at their expected paths
-- Git can follow the path in the `.git` file and find the repository metadata
-- It works automatically when the main repository and its worktrees are siblings under one parent directory
-- It supports GitHub, SSH, and HTTPS remotes out of the box
-- **It officially targets macOS, Linux, and WSL-based Windows** — native Windows path models may need a custom mount strategy
-
-You don't need to hand-build the layout yourself. Just clone the repository, run the helper script on the host, let it place the main repository inside a dedicated parent directory, and then start creating worktrees.
-
-There is one important trade-off: because the container mounts the full shared parent directory, the container can also see sibling folders under that parent. That is why the recommended setup uses a dedicated parent directory rather than a general-purpose folder.
-
-For technical details about the mount strategy and customization options, see [`.devcontainer/readme.md`](./.devcontainer/readme.md).
+- why the shared-parent layout matters
+- why Git `safe.directory` has to be handled carefully
+- what trade-offs the approach makes
+- when you should or should not use it

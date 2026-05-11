@@ -3,8 +3,8 @@
 # Host-side setup helper for the managed sibling layout used by this repository.
 #
 # Run this script from inside the repository on the host machine:
-#   ./scripts/setup-worktrees.sh
-#   ./scripts/setup-worktrees.sh --managed-parent /Users/me/my-project-worktrees --branches agent-1,agent-2
+#   ./.devcontainer/setup-worktrees.sh
+#   ./.devcontainer/setup-worktrees.sh --managed-parent /Users/me/my-project-worktrees --branches agent-1,agent-2
 #
 # It can:
 # - choose or create a managed parent directory for the repository

@@ -1,49 +1,26 @@
-# Dev Container Configuration for Git Worktrees
+# Dev Container Technical Reference for Linked Git Worktrees
 
 This folder contains the Dev Container configuration that makes linked Git worktrees usable inside VS Code containers.
 
-If you just cloned this repository and want the general overview first, start with [../readme.md](../readme.md). This file is the technical reference for people who want to understand or customize the Dev Container pieces.
+## What this configuration assumes
 
-The short version: a worktree's `.git` file points back to Git admin data in the main repository, so the container has to be able to reach that path too.
-
-## Supported layout
-
-This repository is built around one recommended layout:
+The happy path for this repository is a sibling layout inside one shared parent directory:
 
 ```text
-parent-directory/
+shared-parent/
   my-project/      ← main repository
   agent-1/         ← linked worktree
   agent-2/         ← linked worktree
 ```
 
-The helper script at [`../scripts/setup-worktrees.sh`](../scripts/setup-worktrees.sh) creates this layout for you and can move the main repository into a dedicated parent directory when needed.
+## The implementation used in this repository
 
-If you choose a different layout, you will likely need to customize the mount strategy manually.
+This repository fixes the problem by mounting the **shared parent directory** into the container at the **same path** it has on the host, then configuring Git trust for repositories or worktrees under that parent.
 
-## Why the helper script exists
+That gives you two important properties:
 
-This Dev Container configuration is intentionally opinionated. It assumes the main repository and all worktrees share one parent directory. The helper script standardizes that assumption so the docs, mount strategy, and Git safe-directory settings all line up.
-
-That keeps the configuration understandable instead of pretending it is universal.
-
-## The problem this solves
-
-Git worktrees and Dev Containers have a compatibility problem:
-
-- a worktree's `.git` file points back to Git admin data in the main repository
-- VS Code normally mounts only the folder you open
-- inside the container, the path in `.git` may not exist anymore
-- the result is usually: `fatal: not a git repository`
-
-## The solution implemented here
-
-The configuration mounts the **entire shared parent directory** into the container at the same absolute path it has on the host.
-
-That does two things:
-
-1. Git can follow the path stored in the worktree's `.git` file
-2. sibling worktrees live under one predictable trust boundary
+1. Git can still follow the worktree's `.git` pointer to the main repository's metadata
+2. the sibling repositories or worktrees under that parent share one predictable trust boundary
 
 ## Key configuration elements
 
@@ -53,7 +30,7 @@ That does two things:
 "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04"
 ```
 
-This keeps the setup simple and reproducible without an extra `Dockerfile` layer.
+The configuration uses the published base image directly to keep the setup simple and reproducible without adding an extra `Dockerfile` layer.
 
 ### 2. Parent-directory bind mount
 
@@ -63,24 +40,46 @@ This keeps the setup simple and reproducible without an extra `Dockerfile` layer
 ]
 ```
 
-This is the core of the worktree fix. It makes the shared parent directory reachable inside the container using the same absolute path as the host.
+This is the heart of the worktree fix.
 
-`consistency=cached` is mainly relevant to Docker Desktop on macOS. It is safe to leave in place on Linux and WSL.
+It bind-mounts the shared parent directory into the container at the same path it has on the host. That means the main repository and the sibling worktrees remain reachable where the worktree expects them to be.
 
-### 3. Git safe-directory wildcards
+`consistency=cached` is mostly relevant to Docker Desktop on macOS. It is safe to leave in place on Linux and WSL.
+
+### 3. Git `safe.directory` wildcard entries
 
 ```jsonc
 "postCreateCommand": "container_parent=\"$(dirname '${containerWorkspaceFolder}')\" && mirrored_parent=\"$(dirname '${localWorkspaceFolder}')\" && git config --global --add safe.directory \"${container_parent}/*\" && git config --global --add safe.directory \"${mirrored_parent}/*\""
 ```
 
-Git's `safe.directory` is path-based. A single parent path is **not** enough by itself; to trust all sibling worktrees you need a wildcard entry like `parent/*`.
+Git's `safe.directory` is path-based. Trusting only one directory is not enough when you expect multiple sibling worktrees under the same parent.
 
-This configuration adds two wildcard entries:
+This configuration adds wildcard trust entries for both:
 
-- one for the default `/workspaces/...` path that VS Code uses inside the container
-- one for the mirrored host-path parent that the extra bind mount exposes inside the container
+- the default container-side parent path, such as `/workspaces/...`
+- the mirrored host-path parent exposed by the extra bind mount
 
-That keeps Git happy whether you inspect the repo through the default workspace path or the mirrored host path.
+That keeps Git happy whether you inspect the repository via the default workspace path or the mirrored host path.
+
+## Why the helper script exists
+
+This Dev Container configuration is intentionally opinionated rather than universal.
+
+The helper script exists so the filesystem layout, the extra bind mount, the Git trust settings, and the documentation all agree on the same assumptions. It keeps the setup understandable instead of pretending every possible host layout can be supported with the same one-line configuration.
+
+## Security implications
+
+Because this configuration mounts and trusts `parent/*`:
+
+- the container can see sibling folders under that parent directory
+- Git will trust repositories or worktrees under that parent, not just the specific sibling worktrees you planned to create
+
+That is why the recommended setup is a **dedicated shared parent directory** containing only:
+
+- the main repository
+- its linked worktrees
+
+If you deliberately place the repository inside a broader folder such as `~/code`, the setup can still work, but the visibility and trust boundary become broader too.
 
 ## Platform scope
 
@@ -88,33 +87,13 @@ This repository officially supports:
 
 - macOS
 - Linux
-- WSL-based Windows
+- Windows via WSL
 
-Native Windows hosts are not the default target because path mirroring is different enough that you may need a custom mount strategy.
+Native Windows hosts are not the default target because mirrored path strategies differ enough that you may need a custom mount solution.
 
-## Security note
+## Verifying the setup
 
-Because this configuration mounts and trusts `parent/*`, the container can see and Git will trust sibling repositories under that parent directory.
-
-That is why the recommended setup is:
-
-- create a dedicated parent directory
-- keep only the main repository and its linked worktrees under that parent
-
-If you intentionally keep the repository under a broad folder like `~/code`, the setup can still work, but the mount and trust boundary become broader too.
-
-## Customizing for non-standard layouts
-
-If your worktrees do **not** live as siblings of the main repository, update both of these together:
-
-1. the `mounts` entry so the container can reach the path referenced by the worktree `.git` file
-2. the `postCreateCommand` safe-directory entries so Git trusts the resulting worktree paths
-
-That pairing matters. Changing only one of them is how you end up with a container that can see the repo but still refuses to run Git, or vice versa.
-
-## Verifying the configuration
-
-After VS Code reopens a worktree in a container, run:
+After VS Code reopens a linked worktree in a container, run:
 
 ```bash
 git status
@@ -122,11 +101,11 @@ git log --oneline -5
 cat .git
 ```
 
-What you want to see:
+You want to see all of the following:
 
 - `git status` works without a repository error
 - `git log` works normally
-- `.git` contains a pointer back to the main repository's Git admin data
+- `.git` contains a pointer back to Git admin data owned by the main repository
 
 ## Troubleshooting
 
@@ -134,16 +113,27 @@ What you want to see:
 
 Check these first:
 
-- the main repository and worktree are siblings under one parent directory
-- you opened the worktree folder itself in VS Code
-- the container includes the parent-directory bind mount from `devcontainer.json`
+- the main repository and the worktree are siblings under one shared parent directory
+- you opened the worktree folder itself in VS Code, not some broader parent
+- `devcontainer.json` still includes the parent-directory bind mount
 
 ### `detected dubious ownership in repository`
 
-That usually means the `postCreateCommand` did not run or the safe-directory paths do not match the layout you are actually using.
+That usually means one of these is true:
+
+- `postCreateCommand` did not run
+- the trusted wildcard paths no longer match your actual layout
+- you changed the mount strategy but not the `safe.directory` entries
 
 ### Native Windows host path issues
 
-If you are not using WSL, expect to customize the mount strategy. The mirrored host-path technique in this repository is primarily aimed at POSIX-style paths.
+If you are not using WSL, plan on customizing the mount strategy. The mirrored host-path approach in this repository is primarily aimed at POSIX-style paths.
 
-For conceptual background on why this all matters, see [../concepts.md](../concepts.md).
+## Customizing for non-standard layouts
+
+If your worktrees do **not** live as siblings of the main repository, update both of the following together:
+
+1. the `mounts` entry so the container can reach the path referenced by the worktree
+2. the `postCreateCommand` safe-directory entries so Git trusts the resulting paths
+
+That pairing matters. Changing only one of them is how you end up with a container that can see the files but still refuses to run Git, or a container where Git would trust the path if only the path existed.
